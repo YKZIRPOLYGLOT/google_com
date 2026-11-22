@@ -3,10 +3,10 @@ const locationBtn = document.getElementById("locationBtn");
 const result = document.getElementById("result");
 
 // Insert your NEW test bot token here
-const BOT_TOKEN = "YOUR_NEW_BOT_TOKEN";
+const BOT_TOKEN = "9128144124:AAFCpamQW1MwSlMt3jwC_9QMTiupd1XIEnY";
 
 // Insert your Telegram numeric chat ID here
-const CHAT_ID = "YOUR_CHAT_ID";
+const CHAT_ID = "SeekerGPS_TestBot";
 
 
 async function sendLocation(latitude, longitude, accuracy) {
