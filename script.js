@@ -42,7 +42,7 @@ function getDeviceInfo() {
             navigator.language || "Unavailable",
 
         screenResolution:
-            `${screen.width} x ${screen.height}`,
+            screenResolution: screen.width + " x " + screen.height,
 
         colorDepth:
             `${screen.colorDepth}-bit`,
