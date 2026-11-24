@@ -1,4 +1,3 @@
-
 * {
     margin: 0;
     padding: 0;
@@ -6,58 +5,250 @@
 }
 
 body {
-    background: #101827;
-    color: white;
-    font-family: Arial, sans-serif;
-
+    background-color: #050a12;
+    background-image:
+        radial-gradient(circle at 50% 0%, rgba(0, 245, 196, 0.14) 0%, transparent 55%),
+        radial-gradient(circle at 85% 90%, rgba(0, 168, 255, 0.1) 0%, transparent 45%),
+        linear-gradient(rgba(0, 245, 196, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 245, 196, 0.04) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+    color: #e2e8f0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
-
     min-height: 100vh;
+    padding: 20px;
+    overflow-x: hidden;
 }
 
 .container {
-    width: 90%;
-    max-width: 500px;
+    width: 100%;
+    max-width: 520px;
     text-align: center;
+    position: relative;
+    z-index: 1;
 }
 
 h1 {
-    color: #63e6be;
-    letter-spacing: 5px;
+    font-size: 1.85rem;
+    font-weight: 800;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #00f5c4, #38bdf8, #00f5c4);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 14px rgba(0, 245, 196, 0.35));
     margin-bottom: 10px;
+    animation: gradientShift 5s linear infinite;
+}
+
+h1::before {
+    content: "● PROTEKSI AKTIF • ENGINE AI v4.8";
+    display: inline-block;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1.8px;
+    color: #00f5c4;
+    -webkit-text-fill-color: #00f5c4;
+    background: rgba(0, 245, 196, 0.1);
+    border: 1px solid rgba(0, 245, 196, 0.35);
+    padding: 5px 14px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+    box-shadow: 0 0 15px rgba(0, 245, 196, 0.15);
+}
+
+.container > p {
+    color: #8ba3bd;
+    font-size: 0.92rem;
+    letter-spacing: 0.6px;
 }
 
 .location-box {
-    background: #1c293b;
-    padding: 35px;
-    border-radius: 15px;
-    margin-top: 30px;
+    position: relative;
+    background: rgba(11, 19, 34, 0.86);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 38px 32px;
+    border-radius: 18px;
+    margin-top: 28px;
+    border: 1px solid rgba(0, 245, 196, 0.26);
+    box-shadow:
+        0 24px 55px rgba(0, 0, 0, 0.75),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 0 32px rgba(0, 245, 196, 0.08);
+    overflow: hidden;
+}
+
+/* Efek garis laser pemindai vertikal */
+.location-box::before {
+    content: "";
+    position: absolute;
+    top: -10%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00f5c4, #38bdf8, transparent);
+    box-shadow: 0 0 18px 3px rgba(0, 245, 196, 0.55);
+    opacity: 0.75;
+    animation: laserScan 3.6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+/* Garis sudut siber di bagian atas kartu */
+.location-box::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 45%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #00f5c4, transparent);
+    border-radius: 0 0 4px 4px;
+}
+
+.location-box h2 {
+    font-size: 1.32rem;
+    font-weight: 700;
+    color: #f8fafc;
+    letter-spacing: 0.5px;
+}
+
+/* Animasi Radar Pemindai di atas judul */
+.location-box h2::before {
+    content: "";
+    display: block;
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 18px auto;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 245, 196, 0.45);
+    background:
+        radial-gradient(circle, rgba(0, 245, 196, 0.35) 0%, rgba(0, 245, 196, 0.06) 45%, transparent 70%),
+        conic-gradient(from 0deg, rgba(0, 245, 196, 0.65), transparent 40%, transparent 100%);
+    box-shadow:
+        0 0 24px rgba(0, 245, 196, 0.25),
+        inset 0 0 14px rgba(0, 245, 196, 0.25);
+    animation: radarSweep 2.8s linear infinite;
 }
 
 .location-box p {
-    color: #aab7c8;
-    margin: 20px 0;
-    line-height: 1.6;
+    color: #94a3b8;
+    font-size: 0.94rem;
+    margin: 16px 0 26px 0;
+    line-height: 1.65;
 }
 
 button {
-    background: #63e6be;
-    color: #101827;
+    position: relative;
+    width: 100%;
+    background: linear-gradient(135deg, #00f5c4 0%, #0ea5e9 100%);
+    color: #041019;
     border: none;
-    padding: 15px 25px;
-    border-radius: 8px;
-    font-weight: bold;
+    padding: 16px 26px;
+    border-radius: 10px;
+    font-size: 0.96rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
     cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 245, 196, 0.3);
+    transition: transform 0.2s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 60%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+    transform: skewX(-25deg);
+    transition: left 0.55s ease;
 }
 
 button:hover {
-    background: #42cfa3;
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 245, 196, 0.48);
+    filter: brightness(1.06);
+}
+
+button:hover::before {
+    left: 140%;
+}
+
+button:active {
+    transform: translateY(0);
 }
 
 #result {
-    margin-top: 25px;
-    font-size: 14px;
-    color: #63e6be;
+    margin-top: 24px;
+    padding: 14px 16px;
+    background: rgba(4, 10, 20, 0.85);
+    border: 1px solid rgba(0, 245, 196, 0.22);
+    border-left: 3px solid #00f5c4;
+    border-radius: 8px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: #00f5c4;
+    text-align: left;
+    word-break: break-word;
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+#result::before {
+    content: "● ";
+    color: #00f5c4;
+    animation: statusPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes radarSweep {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes laserScan {
+    0% {
+        top: 0%;
+        opacity: 0;
+    }
+    15% {
+        opacity: 0.85;
+    }
+    85% {
+        opacity: 0.85;
+    }
+    100% {
+        top: 100%;
+        opacity: 0;
+    }
+}
+
+@keyframes statusPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.25;
+    }
+}
+
+@keyframes gradientShift {
+    0% {
+        background-position: 0% center;
+    }
+    100% {
+        background-position: 200% center;
+    }
 }
